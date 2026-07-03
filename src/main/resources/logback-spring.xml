@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+📘 CONCEPT: Video 18 - Structured vs Unstructured Logging
+🟡 NOVICE: System.out.println → no timestamp, no level, not searchable
+🏢 PRODUCT: structured JSON logs → New Relic/ELK can parse, filter, alert
+            dev profile = readable colored text
+            prod profile = JSON (machine parseable)
+-->
+<configuration>
+
+    <!-- ── DEV Profile: Human-readable colored logs ─────────────────── -->
+    <springProfile name="dev">
+        <appender name="CONSOLE"
+                  class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>
+%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%X{requestId:-no-req}]) %yellow([%X{userId:-anonymous}]) %magenta(%-40logger{40}) : %msg%n
+                </pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <!-- Show our app's DEBUG logs in dev -->
+        <logger name="com.bookvault" level="DEBUG"/>
+        <!-- Show SQL in dev -->
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ── PROD Profile: JSON structured logs for New Relic/ELK ──────── -->
+    <!--
+    📘 CONCEPT: Video 18 - JSON logs in production
+    Each log line is a complete JSON object that New Relic can parse
+    Fields: timestamp, level, requestId, userId, logger, message
+    Search: {"requestId": "a3f2b1c4"} → find all logs for one request
+    Alert:  {"level": "ERROR"} count > 10/min → PagerDuty notification
+    -->
+    <springProfile name="prod">
+        <appender name="JSON_CONSOLE"
+                  class="ch.qos.logback.core.ConsoleAppender">
+            <encoder
+              class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>requestId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <customFields>
+                    {"app":"bookvault","env":"prod"}
+                </customFields>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+
+        <logger name="com.bookvault" level="INFO"/>
+    </springProfile>
+
+</configuration>
